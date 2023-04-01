@@ -1,4 +1,12 @@
 $(document).ready(function () {
+  //global io
+  let socket = io();
+
+  socket.on('user count', data => {
+    console.log('Users count:')
+    console.log(data);
+  });
+
   // Form submittion with new message in field with id 'm'
   $('form').submit(function () {
     var messageToSend = $('#m').val();

@@ -5,13 +5,11 @@ const myDB = require('./connection');
 const fccTesting = require('./freeCodeCamp/fcctesting.js');
 const passport = require('passport');
 const session = require('express-session');
-//const { ObjectID } = require('mongodb');
-//const LocalStrategy = require('passport-local');
-//const res = require('express/lib/response');
-//const bcrypt = require('bcrypt');
 const routes = require('./routes.js');
 const auth = require('./auth.js');
 const app = express();
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
 
 app.set('view engine', 'pug');
 app.set('views', './views/pug');
@@ -31,13 +29,6 @@ app.use('/public', express.static(process.cwd() + '/public'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const ensureAuthenticated = (req, res, next) => {
-  if (req.isAuthenticated()) {
-    return next();
-  }
-  res.redirect('/');
-};
-
 myDB(async client => {
   const myDataBase = await client.db('MyDataBase').collection('users');
 
@@ -47,12 +38,19 @@ myDB(async client => {
   //Authentication
   auth(app, myDataBase);
 
-  //Not Found
-  app.use((req, res, next) => {
-    res.status(404)
-      .type('text')
-      .send('Not Found');
-    console.log("User Not Found!")
+  //Listen for connections I guess
+  let currentUsers = 0;
+
+  io.on('connection', socket => {
+    ++currentUsers;
+    io.emit('user count', currentUsers);
+    console.log('A user has connected');
+
+    socket.on('disconnect', () => {
+      console.log('A user has disconnected');
+      --currentUsers;
+      io.emit('user count', currentUsers);
+    });
   });
 
 }).catch(e => {
@@ -66,6 +64,6 @@ myDB(async client => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+http.listen(PORT, () => {
   console.log('Listening on port ' + PORT);
 });
